@@ -30,7 +30,7 @@ class ConverterApp(tk.Tk):
         self.use_ai = tk.BooleanVar(value=False)
         self.model = tk.StringVar(value=DEFAULT_MODEL)
         self.overwrite = tk.BooleanVar(value=False)
-        self.keep_images = tk.BooleanVar(value=True)
+        self.keep_images = tk.BooleanVar(value=False)
 
         frm = ttk.Frame(self, padding=12)
         frm.pack(fill="both", expand=True)

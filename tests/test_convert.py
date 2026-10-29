@@ -156,3 +156,35 @@ def test_keep_images_places_original_pictures(test_pdf, tmp_path, quiet):
 def test_default_still_embeds_no_images(test_pdf, tmp_path, quiet):
     r = conv.convert(test_pdf, out_dir=tmp_path / "out", transcriber=FakeTranscriber(), log=quiet)
     assert_no_images(r["docx"])
+
+
+def test_cli_keep_images_defaults_to_off(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(conv, "convert", lambda *a, **kw: seen.update(kw) or dict(layout="generic"))
+    monkeypatch.setattr("sys.argv", ["convert_pdf_to_word.py", "x.pdf"])
+    conv.main()
+    assert seen["keep_images"] is False
+    monkeypatch.setattr("sys.argv", ["convert_pdf_to_word.py", "x.pdf", "--keep-images"])
+    conv.main()
+    assert seen["keep_images"] is True
+
+
+def test_convert_default_is_keep_images_off():
+    import inspect
+    assert inspect.signature(conv.convert).parameters["keep_images"].default is False
+
+
+def test_readme_documents_both_modes():
+    from pathlib import Path
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
+    assert "By default, no original images" in readme
+    assert "--keep-images" in readme and "Keep original images" in readme
+    assert "No original images or scanned pages are placed in the output.**" not in readme
+
+
+def test_default_output_is_unchanged_with_keep_images_off(test_pdf, tmp_path, quiet):
+    """A run after a keep-images run must not leak the setting (it is module state)."""
+    conv.convert(test_pdf, out_dir=tmp_path / "a", transcriber=FakeTranscriber(), log=quiet, keep_images=True)
+    r = conv.convert(test_pdf, out_dir=tmp_path / "b", transcriber=FakeTranscriber(), log=quiet)
+    assert_no_images(r["docx"])
+    assert "Original images are included" not in r["review"].read_text(encoding="utf-8")

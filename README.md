@@ -3,7 +3,9 @@
 Converts exam PDFs that mix printed text with handwritten solutions, formulas, sketches and
 scanned tables into a **fully editable, professionally formatted Word document**. Printed text is
 copied from the PDF; image content is typed as Word text, Word equations, Word tables and simple
-text/arrow diagrams. **No original images or scanned pages are placed in the output.** Anything
+text/arrow diagrams. **By default, no original images or scanned pages are placed in the output.**
+With `--keep-images` (the **Keep original images** checkbox in the app), the original drawings,
+handwriting and scanned tables are embedded as pictures instead. Anything
 that cannot be read is marked `[UNCLEAR IN SOURCE]` and listed, with its page, in a review report.
 
 ## Features
@@ -56,7 +58,8 @@ python gui.py
 ```
 
 Choose the PDF, an output folder, optionally a manual transcription module, tick
-**Use Claude AI** if wanted, and press **Convert**. Buttons open the document and the review
+**Use Claude AI** if wanted, tick **Keep original images** to embed drawings and handwriting
+as pictures (off by default), and press **Convert**. Buttons open the document and the review
 report when it finishes.
 
 ### Command line

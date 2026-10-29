@@ -34,3 +34,23 @@ def test_errors_are_shown_not_raised(app, tmp_path, monkeypatch):
                   model="m", overwrite=False, log=lambda m: None))
     app._drain()
     assert shown and "not found" in shown[0][1]
+
+
+def test_keep_images_is_off_by_default_and_can_be_enabled(app, monkeypatch):
+    assert app.keep_images.get() is False
+    app.keep_images.set(True)
+    assert app.keep_images.get() is True
+
+    captured = {}
+
+    class FakeThread:
+        def __init__(self, target, args, daemon):
+            captured["args"] = args[0]
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr("gui.threading.Thread", FakeThread)
+    app.pdf.set("x.pdf")
+    app._start()
+    assert captured["args"]["keep_images"] is True

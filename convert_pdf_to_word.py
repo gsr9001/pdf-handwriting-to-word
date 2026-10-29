@@ -804,7 +804,7 @@ def build_generic_docx(doc_pdf, imgs):
                 if e["kind"] != "i":
                     continue
                 k += 1
-                path, px = imgs.get(e, f"page{pno:02d}_img{k}.png")
+                path, _ = imgs.get(e, f"page{pno:02d}_img{k}.png")
                 if KEEP_IMAGES:
                     add_picture_block(doc, path, (e["x1"] - e["x0"]) / 72)
                     continue
