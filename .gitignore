@@ -1,0 +1,24 @@
+# Private source papers and everything generated from them
+*.pdf
+*.docx
+conversion_review*.txt
+extracted_images/
+ai_transcriptions/
+previous_version/
+TEST-*/
+
+# Transcriptions of private papers (content derived from the PDFs). The documented,
+# synthetic example lives in examples/ and is tracked.
+/solution_transcriptions.py
+/transcriptions_*.py
+
+# Secrets
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
