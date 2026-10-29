@@ -151,3 +151,7 @@ no-overwrite behaviour, error handling and a GUI smoke test.
 Source PDFs, generated documents, review reports, extracted images, AI caches and transcription
 modules of real papers are excluded by `.gitignore`. With `--ai`, images are sent to the
 Anthropic API; do not use `--ai` for material you are not permitted to share with it.
+
+## License
+
+License: MIT (see [LICENSE](LICENSE)).
