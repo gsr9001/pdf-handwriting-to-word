@@ -21,7 +21,7 @@ PDFs that are not in the Classplus questions/answers/solutions layout are conver
 ("generic" mode): printed text is kept, images and scanned/handwritten pages are transcribed.
 
 Usage: python convert_pdf_to_word.py [input.pdf] [--out-dir DIR] [--transcriptions FILE.py]
-                                     [--ai] [--model MODEL] [--overwrite]
+                                     [--ai] [--model MODEL] [--overwrite] [--keep-images]
 """
 import argparse
 import importlib.util
@@ -57,6 +57,8 @@ UNCLEAR = "[UNCLEAR IN SOURCE]"
 TRANSCRIPTION_FILE = None
 GENERIC = False   # True when the PDF is not in the questions/answers/solutions layout
 AI = None         # ClaudeTranscriber when --ai is used
+KEEP_IMAGES = False   # True: place the original images in the document instead of typing them out
+MAX_PICTURE_WIDTH = 6.0   # inches; the text column of the A4 page
 LOG = print
 
 
@@ -484,6 +486,20 @@ def transcribe_image(path, context):
     return blocks
 
 
+def add_picture(par, path, width_in):
+    """Place the original image, unmodified, in `par` (never wider than the text column)."""
+    par.add_run().add_picture(str(path), width=Inches(min(width_in, MAX_PICTURE_WIDTH)))
+
+
+def add_picture_block(doc, path, width_in):
+    """The original image on its own centred line."""
+    par = doc.add_paragraph()
+    par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    par.paragraph_format.space_after = Pt(6)
+    par.paragraph_format.keep_together = True
+    add_picture(par, path, width_in)
+
+
 def add_runs(par, runs, scale=0.85, bold_text=False, context=""):
     for r in runs:
         if r[0] == "t":
@@ -492,6 +508,10 @@ def add_runs(par, runs, scale=0.85, bold_text=False, context=""):
         if r[1].name in FORMULA_IMAGES:
             used_formulas.add(r[1].name)
             par._p.append(omath(FORMULA_IMAGES[r[1].name]))
+            par.add_run(" ")
+            continue
+        if KEEP_IMAGES:
+            add_picture(par, r[1], r[2] / 72)
             par.add_run(" ")
             continue
         blocks = transcribe_image(r[1], f"{context} inline image {r[1].name}".strip())
@@ -643,7 +663,10 @@ def build_docx(qs, ans, sols):
                 add_runs(par, p["runs"], context=f"Q{n} (PDF page {', '.join(map(str, qs[n]['pages']))})")
             elif p["kind"] == "figure":
                 _, path, w, h = p["runs"][0]
-                if path.name in FIGURE_TABLES:
+                if KEEP_IMAGES:
+                    par._p.getparent().remove(par._p)
+                    add_picture_block(doc, path, w / 72)
+                elif path.name in FIGURE_TABLES:
                     par._p.getparent().remove(par._p)
                     rows = FIGURE_TABLES[path.name]
                     add_table(doc, rows, widths=(2.0, 4.0) if len(rows[0]) == 2 else None, size=11,
@@ -710,10 +733,15 @@ def build_docx(qs, ans, sols):
     doc.add_page_break()
     doc.add_heading("3. Detailed Solutions — Fully Typed and Editable", 1)
     intro = doc.add_paragraph()
-    r = intro.add_run(f"The solutions of the source PDF (pages {S_PAGES[0]}–{S_PAGES[-1]}) are given below as editable "
-                      "text. Handwritten or image content is typed as text, Word equations and tables, in the order "
-                      "written; spelling and arithmetic are reproduced as in the source. Unreadable parts are marked "
-                      f"{UNCLEAR}.")
+    if KEEP_IMAGES:
+        r = intro.add_run(f"The solutions of the source PDF (pages {S_PAGES[0]}–{S_PAGES[-1]}) are given below. "
+                          "Printed text is editable; handwritten, drawn and scanned content is shown as the "
+                          "original image from the PDF.")
+    else:
+        r = intro.add_run(f"The solutions of the source PDF (pages {S_PAGES[0]}–{S_PAGES[-1]}) are given below as "
+                          "editable text. Handwritten or image content is typed as text, Word equations and tables, "
+                          "in the order written; spelling and arithmetic are reproduced as in the source. Unreadable "
+                          f"parts are marked {UNCLEAR}.")
     r.italic = True
     r.font.size = Pt(9.5)
     for n in sorted(sols):
@@ -737,6 +765,9 @@ def build_docx(qs, ans, sols):
                 p.paragraph_format.left_indent = Inches(0.3)
                 p.paragraph_format.space_after = Pt(5)
                 add_text(p, item[1])
+                continue
+            if KEEP_IMAGES:
+                add_picture_block(doc, item[1], item[2][0] / 120)  # item[2] = (width, height) in pixels
                 continue
             if n in SOLUTIONS:  # one manual transcription covers all images of a solution
                 if not blocks_done:
@@ -773,7 +804,10 @@ def build_generic_docx(doc_pdf, imgs):
                 if e["kind"] != "i":
                     continue
                 k += 1
-                path, _ = imgs.get(e, f"page{pno:02d}_img{k}.png")
+                path, px = imgs.get(e, f"page{pno:02d}_img{k}.png")
+                if KEEP_IMAGES:
+                    add_picture_block(doc, path, (e["x1"] - e["x0"]) / 72)
+                    continue
                 blocks = transcribe_image(path, f"Page {pno} image {k}")
                 if blocks:
                     add_blocks(doc, blocks)
@@ -785,6 +819,9 @@ def build_generic_docx(doc_pdf, imgs):
             # no text layer and no embedded images: a vector/ink page - transcribe a rendering of it
             path = IMG_DIR / f"page{pno:02d}_render.png"
             doc_pdf[pno - 1].get_pixmap(dpi=200).save(path)
+            if KEEP_IMAGES:
+                add_picture_block(doc, path, MAX_PICTURE_WIDTH)
+                continue
             blocks = transcribe_image(path, f"Page {pno} (rendered page)")
             if blocks:
                 add_blocks(doc, blocks)
@@ -919,14 +956,17 @@ def write_review():
 
 
 def convert(pdf, out_dir=None, transcriptions=None, ai=False, model=DEFAULT_MODEL, overwrite=False,
-            log=print, transcriber=None):
+            log=print, transcriber=None, keep_images=False):
     """Convert `pdf` to an editable .docx. Returns a dict describing the outputs.
 
     ai          - transcribe images that have no manual transcription with Claude (needs credentials)
     transcriber - an object with .model and .transcribe(path, context) (tests inject a fake)
+    keep_images - place the original drawings/handwriting/scans in the document as pictures instead of
+                  typing them out (printed text stays editable; formula images listed in a manual
+                  transcription still become Word equations)
     """
-    global PDF, AI, LOG
-    PDF, LOG = Path(pdf), log
+    global PDF, AI, LOG, KEEP_IMAGES
+    PDF, LOG, KEEP_IMAGES = Path(pdf), log, keep_images
     review.clear()
     arrow_noted.clear()
     used_formulas.clear()
@@ -978,6 +1018,8 @@ def convert(pdf, out_dir=None, transcriptions=None, ai=False, model=DEFAULT_MODE
         result.update(questions=len(qs), answers=len(ans), solutions=len(sols))
 
     method = []
+    if KEEP_IMAGES:
+        method.append("original images placed in the document (no transcription of image content)")
     if ai_requested and AI is None:
         method.append("Claude AI requested but unavailable (see above)")
     if TRANSCRIPTION_FILE:
@@ -985,8 +1027,9 @@ def convert(pdf, out_dir=None, transcriptions=None, ai=False, model=DEFAULT_MODE
     if AI is not None:
         method.append(f"Claude vision model {AI.model} ({len(ai_transcribed)} images)")
     review.append("Recognition method: " + (" and ".join(method) or "none — images are marked " + UNCLEAR) +
-                  ". No images are included in the Word document; proof-read each transcription against the "
-                  "PDF page given in this file.")
+                  (". Original images are included in the Word document." if KEEP_IMAGES else
+                   ". No images are included in the Word document; proof-read each transcription against the "
+                   "PDF page given in this file."))
     review.extend(REVIEW_GENERAL)
     out_doc.save(OUT_DOCX)
     write_review()
@@ -1009,9 +1052,13 @@ def main():
     ap.add_argument("--model", default=DEFAULT_MODEL, help=f"Claude model for --ai (default {DEFAULT_MODEL})")
     ap.add_argument("--overwrite", action="store_true",
                     help="replace an existing output .docx instead of writing 'name (2).docx'")
+    ap.add_argument("--keep-images", action="store_true",
+                    help="place the original images (drawings, handwriting, scanned tables) in the document "
+                         "instead of typing them out")
     args = ap.parse_args()
     try:
-        r = convert(args.pdf, args.out_dir, args.transcriptions, args.ai, args.model, args.overwrite)
+        r = convert(args.pdf, args.out_dir, args.transcriptions, args.ai, args.model, args.overwrite,
+                    keep_images=args.keep_images)
     except ConversionError as exc:
         sys.exit(f"Error: {exc}")
     if r["layout"] == "test":

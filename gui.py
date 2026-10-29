@@ -30,6 +30,7 @@ class ConverterApp(tk.Tk):
         self.use_ai = tk.BooleanVar(value=False)
         self.model = tk.StringVar(value=DEFAULT_MODEL)
         self.overwrite = tk.BooleanVar(value=False)
+        self.keep_images = tk.BooleanVar(value=True)
 
         frm = ttk.Frame(self, padding=12)
         frm.pack(fill="both", expand=True)
@@ -44,8 +45,11 @@ class ConverterApp(tk.Tk):
                         variable=self.use_ai).pack(side="left")
         ttk.Label(ai, text="  Model:").pack(side="left")
         ttk.Entry(ai, textvariable=self.model, width=20).pack(side="left")
-        ttk.Checkbutton(frm, text="Overwrite an existing output .docx", variable=self.overwrite) \
-            .grid(row=4, column=0, columnspan=3, sticky="w")
+        opts = ttk.Frame(frm)
+        opts.grid(row=4, column=0, columnspan=3, sticky="w")
+        ttk.Checkbutton(opts, text="Overwrite an existing output .docx", variable=self.overwrite).pack(side="left")
+        ttk.Checkbutton(opts, text="  Keep original images (drawings, handwriting) instead of typing them",
+                        variable=self.keep_images).pack(side="left")
 
         btns = ttk.Frame(frm)
         btns.grid(row=5, column=0, columnspan=3, sticky="w", pady=8)
@@ -110,7 +114,7 @@ class ConverterApp(tk.Tk):
         args = dict(pdf=self.pdf.get(), out_dir=self.out_dir.get() or None,
                     transcriptions=self.transcriptions.get() or None, ai=self.use_ai.get(),
                     model=self.model.get().strip() or DEFAULT_MODEL, overwrite=self.overwrite.get(),
-                    log=lambda m: self.messages.put(("log", m)))
+                    keep_images=self.keep_images.get(), log=lambda m: self.messages.put(("log", m)))
         self.worker = threading.Thread(target=self._run, args=(args,), daemon=True)
         self.worker.start()
 

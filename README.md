@@ -72,15 +72,17 @@ python convert_pdf_to_word.py TEST-41.pdf --out-dir out/ --ai
 #   --transcriptions FILE.py   use a specific manual transcription module
 #   --model MODEL              Claude model for --ai (default claude-opus-5-5)
 #   --overwrite                replace an existing output .docx
+#   --keep-images              put the original drawings/handwriting/scans in the document as
+#                              pictures instead of typing them out
 ```
 
 Outputs in the output folder:
 
 | File | Contents |
 |---|---|
-| `<stem>_Fully_Editable.docx` | the editable document (no images) |
+| `<stem>_Fully_Editable.docx` | the editable document (no images, unless `--keep-images` is used) |
 | `conversion_review.txt` | items to check by hand |
-| `extracted_images/` | the PDF's images, extracted for reference/transcription (not in the .docx) |
+| `extracted_images/` | the PDF's images, extracted for reference/transcription (not in the .docx unless `--keep-images`) |
 | `ai_transcriptions/` | cached Claude transcriptions (with `--ai`), editable JSON |
 
 From Python:

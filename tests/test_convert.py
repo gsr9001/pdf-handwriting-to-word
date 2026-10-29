@@ -140,3 +140,19 @@ def test_missing_credentials_stop_ai_after_first_image(test_pdf, tmp_path, quiet
     assert len(fake.calls) == 1  # not retried for every image
     review = r["review"].read_text(encoding="utf-8")
     assert "AI transcription stopped" in review and "requested but unavailable" in review
+
+
+def test_keep_images_places_original_pictures(test_pdf, tmp_path, quiet):
+    fake = FakeTranscriber()
+    r = conv.convert(test_pdf, out_dir=tmp_path / "out", transcriber=fake, log=quiet, keep_images=True)
+    assert fake.calls == []  # nothing is sent for transcription
+    with zipfile.ZipFile(r["docx"]) as z:
+        assert [n for n in z.namelist() if n.startswith("word/media/")]
+        assert "<w:drawing" in z.read("word/document.xml").decode()
+    assert "Original images are included" in r["review"].read_text(encoding="utf-8")
+    assert "[UNCLEAR IN SOURCE] — image" not in body_text(r["docx"])
+
+
+def test_default_still_embeds_no_images(test_pdf, tmp_path, quiet):
+    r = conv.convert(test_pdf, out_dir=tmp_path / "out", transcriber=FakeTranscriber(), log=quiet)
+    assert_no_images(r["docx"])
