@@ -850,6 +850,9 @@ def add_blocks(doc, blocks):
             doc.add_paragraph().paragraph_format.space_after = Pt(0)
         elif kind == "diagram":
             add_diagram(doc, val[0])
+        elif kind == "image":
+            # a neatly redrawn figure supplied by a manual transcription module: (path[, width in])
+            add_picture_block(doc, val[0], min(val[1] if len(val) > 1 else MAX_PICTURE_WIDTH, MAX_PICTURE_WIDTH))
         elif kind == "note":
             p = doc.add_paragraph()
             p.paragraph_format.left_indent = Inches(0.3)

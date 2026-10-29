@@ -61,3 +61,13 @@ def test_table_and_diagram_merge():
     assert t.rows[1].cells[0]._tc is t.rows[1].cells[1]._tc  # merged
     d = conv.add_diagram(doc, [["Top", "<<"], ["↙", "↘"]])
     assert d.rows[0].cells[0]._tc is d.rows[0].cells[1]._tc
+
+
+def test_image_block_embeds_a_redrawn_figure(tmp_path):
+    from PIL import Image
+    fig = tmp_path / "fig.png"
+    Image.new("RGB", (400, 200), "white").save(fig)
+    doc = Document()
+    conv.add_blocks(doc, [("image", str(fig), 3.0)])
+    assert len(doc.inline_shapes) == 1
+    assert abs(doc.inline_shapes[0].width.inches - 3.0) < 0.01

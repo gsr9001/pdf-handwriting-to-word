@@ -110,6 +110,7 @@ SOLUTIONS = {
         ("table", [["Property", "Valid range"], ["$e$", "$e>0$"]]),
         ("diagram", [["Step A", "→", "Step B"]]),
         ("note", "A word in the margin is crossed out in the source."),
+        ("image", "figures/q12.png", 4.5),   # a neatly redrawn figure (path, width in inches)
     ],
 }
 ```

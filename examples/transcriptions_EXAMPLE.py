@@ -12,6 +12,7 @@ Block markup
                        the full width
   ("diagram", rows)    borderless centred grid of labels and arrows; a cell "<<" merges into the
                        cell on its left
+  ("image", path[, w])  a redrawn figure picture (width in inches, max 6)
   ("note", s)          transcriber's note (grey italics; not part of the source)
 Equation syntax: \\frac{a}{b}, x_{sub}, x^{sup}, \\box{...}, \\text{upright words}
 """
